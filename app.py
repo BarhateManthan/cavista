@@ -1,113 +1,50 @@
-from fastapi import FastAPI, File, UploadFile
 import os
-from pdf2image import convert_from_path
-import pytesseract
-from transformers import AutoTokenizer, AutoModelForTokenClassification, pipeline
-from sentence_transformers import SentenceTransformer
-import faiss
-import numpy as np
+import google.generativeai as genai
+from chromadb import Client, Settings
+from backend.ocr import process_pdfs
+from backend.vector_db import create_vector_store
 
-app = FastAPI()
+# Configure Gemini API
+def configure_gemini(api_key):
+    genai.configure(api_key=api_key)
 
-UPLOAD_FOLDER = "uploads"
-OUTPUT_FILE = "output.txt"
-VECTOR_DB_FILE = "vector_db.index"
-ALLOWED_EXTENSIONS = {"pdf"}
-
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-# Load BioBERT Model for NER
-model_name = "dmis-lab/biobert-v1.1"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForTokenClassification.from_pretrained(model_name)
-nlp_pipeline = pipeline("ner", model=model, tokenizer=tokenizer)
-
-# Load Sentence Transformer for Embeddings
-embed_model = SentenceTransformer("all-MiniLM-L6-v2")
-
-# Initialize FAISS Index
-D = 384  # Embedding dimension for MiniLM
-if os.path.exists(VECTOR_DB_FILE):
-    index = faiss.read_index(VECTOR_DB_FILE)
-else:
-    index = faiss.IndexFlatL2(D)
-
-# Function to check allowed file type
-def allowed_file(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-
-# Convert PDF to Text
-def extract_text_from_pdf(pdf_path):
-    pages = convert_from_path(pdf_path)
-    text = ""
-    for page in pages:
-        text += pytesseract.image_to_string(page, lang="eng") + "\n"
-
-    print("\n========== Extracted Text ==========")
-    print(text)
-    return text.strip()
-
-# Extract Medical Terms using BioBERT
-def extract_medical_terms(text):
-    ner_results = nlp_pipeline(text)
-    medical_terms = set()
-
-    for entity in ner_results:
-        if entity["score"] > 0.85:
-            medical_terms.add(entity["word"])
-
-    if not medical_terms:
-        print("⚠️ No medical terms extracted from text.")
+# Query the vector store and get a response from Gemini
+def query_vector_store(query, rag_folder, api_key):
+    # Configure Gemini
+    configure_gemini(api_key)
     
-    return list(medical_terms)
+    # Load ChromaDB collection
+    client = Client(Settings(persist_directory=os.path.join(rag_folder, 'chroma_db')))
+    collection = client.get_collection(name="pdf_texts")
+    
+    # Query the vector store
+    results = collection.query(query_texts=[query], n_results=5)
+    
+    # Combine the top results into a single context string
+    context = "\n".join(results['documents'][0])
+    
+    # Use Gemini to generate a response
+    model = genai.GenerativeModel('gemini-pro')
+    response = model.generate_content(f"Context: {context}\n\nQuestion: {query}")
+    
+    return response.text
 
-# Append Extracted Data to output.txt
-def save_output(text, medical_terms):
-    with open(OUTPUT_FILE, "a", encoding="utf-8") as f:  # 'a' mode appends data
-        f.write("\n========== Extracted Text ==========\n")
-        f.write(text + "\n\n")
-        f.write("========== Extracted Medical Terms ==========\n")
-        f.write(", ".join(medical_terms) + "\n")
+def main():
+    uploads_folder = os.path.join(os.getcwd(), 'uploads')
+    text_folder = os.path.join(os.getcwd(), 'text')
+    rag_folder = os.path.join(os.getcwd(), 'rag')
+    api_key = "AIzaSyAihO7eGZVGEOSimZOiBKKTdB0WUuA2lKk"  # Replace with your Gemini API key
+    
+    # Step 1: Process PDFs and save text files
+    process_pdfs(uploads_folder, text_folder)
+    
+    # Step 2: Create vector store
+    create_vector_store(text_folder, rag_folder)
+    
+    # Step 3: Query the vector store
+    query = "tell me the summary."
+    response = query_vector_store(query, rag_folder, api_key)
+    print(response)
 
-    print(f"\n✅ Output appended to {OUTPUT_FILE}")
-
-# Store Medical Terms in FAISS Vector DB
-def store_in_vector_db(medical_terms):
-    global index
-
-    if not medical_terms:
-        print("⚠️ No new medical terms to store in vector DB.")
-        return
-
-    embeddings = embed_model.encode(medical_terms, convert_to_numpy=True)
-    index.add(embeddings)
-    faiss.write_index(index, VECTOR_DB_FILE)
-
-    print(f"\n✅ Vector DB updated and stored at {VECTOR_DB_FILE}")
-
-@app.post("/upload/")
-async def upload_file(file: UploadFile = File(...)):
-    if not allowed_file(file.filename):
-        return {"error": "Only PDF files are allowed"}
-
-    # Save file temporarily
-    file_path = os.path.join(UPLOAD_FOLDER, file.filename)
-    with open(file_path, "wb") as buffer:
-        buffer.write(await file.read())
-
-    # Process the file
-    extracted_text = extract_text_from_pdf(file_path)
-    if not extracted_text.strip():
-        return {"error": "No text extracted from the PDF."}
-
-    medical_terms = extract_medical_terms(extracted_text)
-
-    # Save and store results
-    save_output(extracted_text, medical_terms)
-    store_in_vector_db(medical_terms)
-
-    return {
-        "message": f"Processed {file.filename}",
-        "extracted_terms": medical_terms,
-        "vector_db_path": os.path.abspath(VECTOR_DB_FILE)  # Full path to vector DB
-    }
+if __name__ == "__main__":
+    main()
