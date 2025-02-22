@@ -8,7 +8,7 @@ import json
 
 app = FastAPI()
 
-# CORS setup so the frontend doesn’t freak out
+# CORS setup so the frontend doesn’t    freak out
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],  # Where the React magic happens
@@ -92,4 +92,4 @@ async def end_session(request: OTPRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)  # Spinning up the server
+    uvicorn.run(app, host="0.0.0.0", port=8000)

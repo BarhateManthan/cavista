@@ -161,11 +161,42 @@
 }
 
 .info-box {
-  background-color: var(--primary-red);
-  color: var(--white);
-  padding: 1.5rem;
+  background-color: var(--white);
+  color: var(--primary-red);
+  padding: 2rem;
   border-radius: 0.5rem;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.info-box:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.icon-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.info-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--primary-red);
+}
+
+.info-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: var(--primary-red);
+}
+
+.info-text {
+  font-size: 1rem;
+  color: #333;
 }
 
 .mobile-user-button {

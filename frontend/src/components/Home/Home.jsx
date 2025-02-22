@@ -92,13 +92,31 @@ function Home() {
           <h2 className="about-title">About SEWA मित्र</h2>
           <div className="info-grid">
             <div className="info-box">
-              <p>Reliable health management at your fingertips.</p>
+              <div className="icon-container">
+                <svg className="info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+              </div>
+              <h3 className="info-title">Reliable Health Management</h3>
+              <p className="info-text">Access your health records and manage appointments with ease, all in one place.</p>
             </div>
             <div className="info-box">
-              <p>Secure scheduling for hassle-free checkups.</p>
+              <div className="icon-container">
+                <svg className="info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+              </div>
+              <h3 className="info-title">Secure Scheduling</h3>
+              <p className="info-text">Book and manage your checkups securely, without any hassle.</p>
             </div>
             <div className="info-box">
-              <p>Stay informed with expert wellness tips.</p>
+              <div className="icon-container">
+                <svg className="info-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                </svg>
+              </div>
+              <h3 className="info-title">Expert Wellness Tips</h3>
+              <p className="info-text">Stay informed with tips and advice from health experts.</p>
             </div>
           </div>
         </div>
