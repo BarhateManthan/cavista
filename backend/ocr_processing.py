@@ -1,5 +1,5 @@
 import os
-import fitz  # PyMuPDF
+import fitz  
 from PIL import Image
 import pytesseract
 import io
@@ -12,14 +12,14 @@ def pdf_to_text(pdf_path, output_folder):
         page = doc.load_page(page_num)
         page_text = page.get_text()
         
-        if len(page_text.strip()) < 100:  # If text is sparse, use OCR
+        if len(page_text.strip()) < 100:  # OCR 
             pix = page.get_pixmap()
             img = Image.open(io.BytesIO(pix.tobytes()))
             page_text = pytesseract.image_to_string(img)
             
         text += page_text + "\n"
     
-    # Save to text folder
+    # Save 
     base_name = os.path.basename(pdf_path).replace(".pdf", ".txt")
     output_path = os.path.join(output_folder, base_name)
     
