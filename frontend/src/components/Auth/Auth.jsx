@@ -5,11 +5,11 @@ export default function Auth() {
     <header>
       <SignedOut>
         <SignInButton mode="modal">
-          <button className="button-primary">Sign In</button>
+          <button>Sign In</button>
         </SignInButton>
       </SignedOut>
       <SignedIn>
-        <UserButton afterSignOutUrl="/" />
+        <UserButton/>
       </SignedIn>
     </header>
   );
