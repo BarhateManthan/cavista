@@ -89,6 +89,8 @@ const Dashboard = () => {
         <div className="logo">
           <span className="sewa">SEWA</span>
           <span className="hindi">मित्र</span>
+          <span className="sewa"> - </span>
+          <span className="sewa">Patient Portal</span>
         </div>
         
         <div className="button-container">

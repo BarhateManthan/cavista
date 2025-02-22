@@ -11,7 +11,7 @@ app = FastAPI()
 # CORS setup so the frontend doesn’t    freak out
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Where the React magic happens
+    allow_origins=["*"],  # Where the React magic happens
     allow_credentials=True,
     allow_methods=["*"],  # Letting all methods slide
     allow_headers=["*"],  # No gatekeeping on headers
@@ -46,6 +46,7 @@ async def generate_otp(request: OTPRequest):
 async def verify_otp(request: OTPVerify):
     try:
         user_id = redis_client.get(f"otp:{request.otp}")
+        print(user_id)
         
         if not user_id:
             raise HTTPException(status_code=400, detail="OTP’s either dead or fake")
@@ -58,7 +59,15 @@ async def verify_otp(request: OTPVerify):
         }
         redis_client.setex(f"session:{user_id}", 3600, json.dumps(session_data))  # Session expires in 1 hour
 
-        return {"message": "OTP verified, you’re in", "user_id": user_id}
+        return {
+            "message": "OTP verified, connection established",
+            "verified": True,
+            "patient_data": {
+            "name": "John Doe",
+            "age": 30,
+            "medical_history": "Hypertension, Diabetes"
+            }
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

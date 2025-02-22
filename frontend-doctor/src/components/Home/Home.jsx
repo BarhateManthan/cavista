@@ -19,7 +19,7 @@ function Home() {
               <span className="logo-bold">SEWA</span>
               <span className="logo-normal">मित्र</span>
               <span className="logo-normal"> - </span>
-              <span className="logo-normal">Patient Portal</span>
+              <span className="logo-normal">Doctor Portal</span>
             </a>
 
             <div className="desktop-nav">
@@ -83,7 +83,7 @@ function Home() {
         <div className="container">
           <div className="hero-content">
             <h1 className="hero-title">
-              Stay on track with check-ups, right at your fingertips.
+              Keep care on course—effortless check-ups, right in your hands.
             </h1>
           </div>
         </div>
