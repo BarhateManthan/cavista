@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
 import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/clerk-react";
 import Home from './components/Home/Home';
+import Dashboard from './components/Dashboard/Dashboard';
 
 function App() {
   return (
@@ -11,7 +12,7 @@ function App() {
         element={
           <>
             <SignedIn>
-              <Home />
+              <Dashboard />
             </SignedIn>
             <SignedOut>
               <RedirectToSignIn />

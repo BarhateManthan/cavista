@@ -1,0 +1,190 @@
+/* Dashboard.css */
+.file-upload-container {
+    display: flex;
+    min-height: 100vh;
+    background-color: #1a1a1a;
+  }
+  
+  .sidebar {
+    width: 250px;
+    background-color: white;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  
+  .logo {
+    margin-bottom: 40px;
+  }
+  
+  .sewa {
+    color: #ff4444;
+    font-size: 24px;
+    font-weight: bold;
+  }
+  
+  .hindi {
+    font-size: 24px;
+    color: #ff4444;
+  }
+  
+  .button-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: auto;
+  }
+  
+  .connect-button, .add-button {
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+    background-color: transparent;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    font-size: 14px;
+  }
+  
+  .connect-button:hover, .add-button:hover {
+    background-color: #f5f5f5;
+  }
+  
+  .add-button.loading {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+  
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: auto;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+  }
+  
+  .user-name {
+    color: #ff4444;
+    font-size: 14px;
+  }
+  
+  .main-content {
+    flex-grow: 1;
+    background-color: #ff4444;
+  }
+  
+  .error-message {
+    color: #ff0000;
+    font-size: 12px;
+    margin-top: 8px;
+    text-align: center;
+  }
+  
+  /* Modal Styles */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  
+  .modal {
+    background: white;
+    padding: 24px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 400px;
+    position: relative;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .close-button {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    color: #666;
+  }
+  
+  .close-button:hover {
+    color: #333;
+  }
+  
+  .modal-content {
+    margin-top: 20px;
+  }
+  
+  .modal-content h2 {
+    margin: 0 0 20px;
+    color: #333;
+    text-align: center;
+  }
+  
+  .otp-display {
+    font-size: 32px;
+    font-weight: bold;
+    text-align: center;
+    padding: 20px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    letter-spacing: 4px;
+    color: #ff4444;
+  }
+  
+  .modal-actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  
+  .action-button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+  }
+  
+  .action-button svg {
+    margin-bottom: 4px;
+  }
+  
+  .refresh {
+    background: #e3f2fd;
+    color: #1976d2;
+  }
+  
+  .end-session {
+    background: #ffebee;
+    color: #d32f2f;
+  }
+  
+  .share {
+    background: #e8f5e9;
+    color: #388e3c;
+  }
+  
+  .action-button:hover {
+    transform: translateY(-2px);
+    filter: brightness(0.95);
+  }
+  
+  .action-button:active {
+    transform: translateY(0);
+  }
