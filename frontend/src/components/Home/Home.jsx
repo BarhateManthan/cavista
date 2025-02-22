@@ -24,7 +24,6 @@ function Home() {
               <div className="nav-links">
                 <a href="/about" className="nav-link">About Us</a>
                 <a href="/contact" className="nav-link">Contact Us</a>
-                <a href="/terms" className="nav-link">Terms of Service</a>
               </div>
             </div>
 
@@ -60,7 +59,6 @@ function Home() {
             <div className="mobile-nav">
               <a href="/about" className="mobile-link">About Us</a>
               <a href="/contact" className="mobile-link">Contact Us</a>
-              <a href="/terms" className="mobile-link">Terms of Service</a>
               <SignedOut>
                 <SignInButton mode="modal">
                   <button className="mobile-button">Login</button>
