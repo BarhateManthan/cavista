@@ -25,7 +25,7 @@ const Dashboard = () => {
     setError(null);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/generate-otp', {
+      const response = await fetch('http://127.0.0.1:8000/api/generate-otp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -56,7 +56,7 @@ const Dashboard = () => {
 
   const handleEndSession = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/end-session', {
+      const response = await fetch('http://127.0.0.1:8000/api/end-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
