@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import './Dashboard.css';
 import { UserButton, useUser } from "@clerk/clerk-react";
 import { X, Send } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import useSessionPolling from '../useSessionPolling';
 
 const Dashboard = () => {
   const { user, isLoaded } = useUser();
@@ -11,26 +13,10 @@ const Dashboard = () => {
   const [otpInput, setOtpInput] = useState('');
   const [isVerified, setIsVerified] = useState(false);
   const [patientData, setPatientData] = useState(null);
+  const navigate = useNavigate(); // Initialize useNavigate
 
-  useEffect(() => {
-    if (isVerified) {
-      // Start polling to check if the session still exists
-      const interval = setInterval(async () => {
-        try {
-          const response = await fetch(`http://127.0.0.1:8000/api/check-session/${user.id}`);
-          const data = await response.json();
-          if (!data.session_exists) {
-            // Session no longer exists, reload the page
-            window.location.reload();
-          }
-        } catch (err) {
-          console.error('Error checking session:', err);
-        }
-      }, 5000); // Check every 5 seconds
-
-      return () => clearInterval(interval); // Cleanup interval on unmount
-    }
-  }, [isVerified, user?.id]);
+  // Use the custom hook for session polling
+  useSessionPolling(user?.id, isVerified);
 
   if (!isLoaded) {
     return <div>Loading...</div>;
@@ -93,6 +79,13 @@ const Dashboard = () => {
             disabled={isLoading}
           >
             Connect to Patient
+          </button>
+          <button 
+            className={`connect-button ${isLoading ? 'loading' : ''}`} 
+            onClick={() => navigate('/chat')} // Navigate to /chat
+            disabled={isLoading}
+          >
+            Chat
           </button>
           {error && <div className="error-message">{error}</div>}
         </div>

@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom';
 import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/clerk-react";
 import Home from './components/Home/Home';
 import Dashboard from './components/Dashboard/Dashboard';
+import Chatbot from './components/Chatbot/Chatbot';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           </>
         }
       />
+      <Route path="/chat" element = {<SignedIn>{<Chatbot />}</SignedIn> } />
     </Routes>
   );
 }
