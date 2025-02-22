@@ -1,4 +1,3 @@
-/* App.css */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
 
 :root {
@@ -167,6 +166,12 @@
   padding: 1.5rem;
   border-radius: 0.5rem;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.mobile-user-button {
+  display: flex;
+  justify-content: center;
+  margin-top: 1rem;
 }
 
 /* Media queries */

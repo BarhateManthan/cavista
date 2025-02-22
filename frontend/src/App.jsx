@@ -1,15 +1,26 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
-import Auth from './Auth'
-import Home from './components/Home/Home'
+import { Routes, Route } from 'react-router-dom';
+import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/clerk-react";
+import Home from './components/Home/Home';
 
 function App() {
   return (
-    <>
-      <Home />
-    </>
-  )
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route
+        path="/dashboard"
+        element={
+          <>
+            <SignedIn>
+              {/* <Dashboard /> */}
+            </SignedIn>
+            <SignedOut>
+              <RedirectToSignIn />
+            </SignedOut>
+          </>
+        }
+      />
+    </Routes>
+  );
 }
+
 export default App;
