@@ -17,8 +17,8 @@ class OTPVerify(BaseModel):
 
 @app.post("/generate-otp")
 def generate_otp(request: OTPRequest):
-    otp = secrets.token_hex(3)  # Secure 6-char OTP
-    redis_client.setex(f"otp:{otp}", 30, request.user_id)  # Store OTP mapped to user_id with 30-sec expiry
+    otp = secrets.token_hex(3) # 2 * 3 = 6
+    redis_client.setex(f"otp:{otp}", 30, request.user_id)  # 30s expiry
     
     return {"message": "OTP generated", "otp": otp}  
 
@@ -29,7 +29,7 @@ def verify_otp(request: OTPVerify):
     if not user_id:
         raise HTTPException(status_code=400, detail="OTP expired or invalid")
 
-    # Create session with 5-minute expiry, linking doctor to user
+    # kick that guy out after 1 hour
     redis_client.setex(f"session:{user_id}", 3600, request.doctor_id)
 
     return {"message": "OTP verified. Doctor has access.", "user_id": user_id}
@@ -45,13 +45,13 @@ def get_user_data(user_id: str):
 
 @app.post("/end-session")
 def end_session(request: OTPRequest):
-    # Find the OTP for the user
-    otp_keys = redis_client.keys("otp:*")  # Get all stored OTPs
+    # find that thinggg
+    otp_keys = redis_client.keys("otp:*")  # get all otpsss
     for otp_key in otp_keys:
         if redis_client.get(otp_key) == request.user_id:
-            redis_client.delete(otp_key)  # Delete the OTP
+            redis_client.delete(otp_key)  # throw that bish
 
-    # Delete the session
+    # deleteeeee
     if redis_client.delete(f"session:{request.user_id}"):
         return {"message": "Session ended. Doctor access revoked."}
 

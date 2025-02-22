@@ -11,7 +11,7 @@ function App() {
         element={
           <>
             <SignedIn>
-              {/* <Dashboard /> */}
+              <Home />
             </SignedIn>
             <SignedOut>
               <RedirectToSignIn />

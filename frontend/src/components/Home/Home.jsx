@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
+import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser } from "@clerk/clerk-react";
 import { useNavigate } from 'react-router-dom';
 import './Home.css';
 
@@ -35,12 +35,12 @@ function Home() {
                 <SignInButton mode="modal">
                   <button className="button-primary">Login</button>
                 </SignInButton>
-                <SignInButton mode="modal">
+                <SignUpButton mode="modal">
                   <button className="button-primary">Sign Up</button>
-                </SignInButton>
+                </SignUpButton>
               </SignedOut>
               <SignedIn>
-                <UserButton afterSignOutUrl="/" />
+                <UserButton />
               </SignedIn>
             </div>
 
@@ -75,7 +75,7 @@ function Home() {
               </SignedOut>
               <SignedIn>
                 <div className="mobile-user-button">
-                  <UserButton afterSignOutUrl="/" />
+                  <UserButton />
                 </div>
               </SignedIn>
             </div>
