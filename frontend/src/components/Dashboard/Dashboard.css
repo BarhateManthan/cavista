@@ -188,3 +188,33 @@
   .action-button:active {
     transform: translateY(0);
   }
+
+  .otp-message {
+    text-align: center;
+    color: #666;
+    margin-bottom: 20px;
+    font-size: 14px;
+  }
+  
+  .modal-content h2 {
+    color: #ff4444;
+    font-size: 24px;
+    margin-bottom: 24px;
+  }
+  
+  /* Update existing button styles */
+  .add-button {
+    background-color: #ff4444;
+    color: white;
+    border: none;
+    padding: 12px;
+    font-weight: 500;
+  }
+  
+  .add-button:hover {
+    background-color: #ff2020;
+  }
+  
+  .add-button.loading {
+    background-color: #ff8888;
+  }

@@ -35,8 +35,9 @@ class NoteCreate(BaseModel):
 @app.post("/api/generate-otp")
 async def generate_otp(request: OTPRequest):
     try:
-        otp = secrets.token_hex(3)  # 6-char OTP, keep it short and sweet
-        redis_client.setex(f"otp:{otp}", 300, request.user_id)  # 5 mins and poof, it's gone
+        otp = secrets.token_hex(3)  # 6-char OTP
+        otp_key = f"otp:{otp}"
+        redis_client.setex(otp_key, 30, request.user_id)  # OTP expires in 30 seconds
         return {"message": "OTP generated, don't waste time", "otp": otp}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -49,13 +50,39 @@ async def verify_otp(request: OTPVerify):
         if not user_id:
             raise HTTPException(status_code=400, detail="OTP’s either dead or fake")
 
+        # Store session data with the OTP key for easy invalidation
         session_data = {
             "doctor_id": request.doctor_id,
-            "start_time": datetime.now().isoformat()
+            "start_time": datetime.now().isoformat(),
+            "otp_key": f"otp:{request.otp}"  # Store the OTP key in session data
         }
-        redis_client.setex(f"session:{user_id}", 3600, json.dumps(session_data))  # 1-hour pass
+        redis_client.setex(f"session:{user_id}", 3600, json.dumps(session_data))  # Session expires in 1 hour
 
         return {"message": "OTP verified, you’re in", "user_id": user_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/end-session")
+async def end_session(request: OTPRequest):
+    try:
+        session_key = f"session:{request.user_id}"
+        session_data = redis_client.get(session_key)
+        
+        if not session_data:
+            raise HTTPException(status_code=400, detail="No session to end, move along")
+        
+        # Parse session data to get the OTP key
+        session = json.loads(session_data)
+        otp_key = session.get("otp_key")
+        
+        # Delete the session
+        redis_client.delete(session_key)
+        
+        # Delete the OTP if it exists
+        if otp_key:
+            redis_client.delete(otp_key)
+        
+        return {"message": "Session ended, see ya"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -77,16 +104,6 @@ async def save_notes(note: NoteCreate):
             f.write(note.content)
         
         return {"message": "Notes saved, don’t lose ‘em", "filename": filename}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/end-session")
-async def end_session(request: OTPRequest):
-    try:
-        if redis_client.delete(f"session:{request.user_id}"):
-            return {"message": "Session ended, see ya"}
-        
-        raise HTTPException(status_code=400, detail="No session to end, move along")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
