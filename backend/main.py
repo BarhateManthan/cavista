@@ -1,302 +1,222 @@
-from fastapi import FastAPI, APIRouter, HTTPException, BackgroundTasks, Depends
+import os
+import json
+import logging
+from datetime import datetime, timedelta, timezone
+from typing import Optional, Dict
+
+from fastapi import FastAPI, HTTPException, APIRouter, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseDownload
-from google_auth_oauthlib.flow import Flow
-from typing import List, Optional, Dict
-import os
-import io
-import json
-import shutil
-from datetime import datetime
-import logging
 from dotenv import load_dotenv
 
-# Load environment variables
+# Initialize application
 load_dotenv()
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Create FastAPI app
 app = FastAPI(title="Google Drive Integration API")
-
-# Add CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+router = APIRouter(prefix="/api/v1/integrations")
 
 # Configuration
-GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
-GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
-GOOGLE_REDIRECT_URI = os.getenv('GOOGLE_REDIRECT_URI', 'http://localhost:8080/api/v1/drive/callback')
+TOKEN_FILE = "gdrive_token.json"
 DATA_DIR = 'data'
 UPLOAD_DIR = os.path.join(DATA_DIR, 'uploads')
-
-# Ensure directories exist
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# Create router
-router = APIRouter()
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.FileHandler("api.log"), logging.StreamHandler()]
+)
+logger = logging.getLogger(__name__)
+
+# CORS configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[FRONTEND_URL],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 # Pydantic models
-class DriveCredentials(BaseModel):
-    token: str
-    refresh_token: str
-    token_uri: str
-    client_id: str
-    client_secret: str
-    scopes: List[str]
+class TokenData(BaseModel):
+    access_token: str
+    expires_in: int
+    refresh_token: Optional[str] = None
 
-class FolderRequest(BaseModel):
-    folder_id: str
-    credentials: DriveCredentials
-
-class DownloadStatus(BaseModel):
-    status: str
-    file_count: Optional[int]
-    total_size_bytes: Optional[int]
-    folder_path: str
-    message: Optional[str]
+class DownloadRequest(BaseModel):
+    file_id: str
+    is_folder: bool
 
 # Helper functions
-def get_drive_service(credentials: DriveCredentials):
-    """Create and return a Google Drive service instance"""
+def save_token_data(token_data: dict):
     try:
-        creds = Credentials(
-            token=credentials.token,
-            refresh_token=credentials.refresh_token,
-            token_uri=credentials.token_uri,
-            client_id=credentials.client_id,
-            client_secret=credentials.client_secret,
-            scopes=credentials.scopes
-        )
-        return build('drive', 'v3', credentials=creds)
+        expiry = datetime.now(timezone.utc) + timedelta(seconds=token_data['expires_in'])
+        token_data['expiry'] = expiry.isoformat()
+        
+        with open(TOKEN_FILE, 'w') as f:
+            json.dump(token_data, f)
+            
+        logger.info("Token saved successfully")
     except Exception as e:
-        logger.error(f"Error creating Drive service: {str(e)}")
+        logger.error(f"Token save error: {str(e)}")
         raise HTTPException(
-            status_code=500,
-            detail="Failed to create Drive service"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to save token"
         )
 
-async def download_file(service, file_id: str, filepath: str) -> bool:
-    """Download a single file from Google Drive"""
+def load_token_data() -> Optional[dict]:
     try:
-        request = service.files().get_media(fileId=file_id)
-        fh = io.BytesIO()
-        downloader = MediaIoBaseDownload(fh, request)
-        
-        done = False
-        while not done:
-            status, done = downloader.next_chunk()
-            logger.info(f"Download Progress: {int(status.progress() * 100)}%")
-        
-        fh.seek(0)
-        with open(filepath, 'wb') as f:
-            f.write(fh.read())
-        return True
+        with open(TOKEN_FILE, 'r') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
     except Exception as e:
-        logger.error(f"Error downloading file {file_id}: {str(e)}")
-        return False
+        logger.error(f"Token load error: {str(e)}")
+        return None
 
-def create_folder_structure(items: List[Dict], parent_path: str):
-    """Create local folder structure based on Drive items"""
-    for item in items:
-        path = os.path.join(parent_path, item['name'])
-        if item['mimeType'] == 'application/vnd.google-apps.folder':
-            os.makedirs(path, exist_ok=True)
-        elif not os.path.exists(os.path.dirname(path)):
-            os.makedirs(os.path.dirname(path), exist_ok=True)
+def get_credentials() -> Credentials:
+    token_data = load_token_data()
+    if not token_data:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated"
+        )
 
-async def process_folder(service, folder_id: str, base_path: str):
-    """Process a folder and its contents recursively"""
-    results = []
+    credentials = Credentials(
+        token=token_data.get('access_token'),
+        refresh_token=token_data.get('refresh_token'),
+        token_uri='https://oauth2.googleapis.com/token',
+        client_id=GOOGLE_CLIENT_ID,
+        client_secret=GOOGLE_CLIENT_SECRET,
+        scopes=['https://www.googleapis.com/auth/drive.readonly']
+    )
+
+    if credentials.expired and credentials.refresh_token:
+        try:
+            credentials.refresh(Request())
+            save_token_data({
+                'access_token': credentials.token,
+                'refresh_token': credentials.refresh_token,
+                'expires_in': int((credentials.expiry - datetime.now(timezone.utc)).total_seconds())
+            })
+        except Exception as e:
+            logger.error(f"Token refresh failed: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token refresh failed"
+            )
+
+    return credentials
+
+# API endpoints
+@router.get("/health")
+async def health_check():
+    return {"status": "OK", "service": "Google Drive Integration API"}
+
+@router.get("/status")
+async def auth_status():
+    token_data = load_token_data()
+    if not token_data:
+        return {"isAuthenticated": False}
+
+    expiry = datetime.fromisoformat(token_data['expiry'])
+    if expiry < datetime.now(timezone.utc):
+        return {"isAuthenticated": False}
+    
+    return {"isAuthenticated": True}
+
+@router.post("/token")
+async def save_token(token_data: TokenData):
+    try:
+        save_token_data(token_data.dict())
+        return {"status": "success"}
+    except Exception as e:
+        logger.error(f"Token save error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to save token"
+        )
+
+@router.post("/download")
+async def download_folder(request: DownloadRequest, credentials: Credentials = Depends(get_credentials)):
+    try:
+        service = build('drive', 'v3', credentials=credentials)
+        
+        if request.is_folder:
+            return await handle_folder_download(service, request.file_id)
+        return await handle_file_download(service, request.file_id)
+    except HttpError as e:
+        logger.error(f"Google API error: {str(e)}")
+        raise HTTPException(
+            status_code=e.status_code,
+            detail=e.reason
+        )
+
+async def handle_folder_download(service, folder_id: str):
+    folder = service.files().get(fileId=folder_id).execute()
+    folder_name = folder['name']
+    folder_path = os.path.join(UPLOAD_DIR, folder_name)
+    os.makedirs(folder_path, exist_ok=True)
+
+    items = []
     page_token = None
     
     while True:
-        try:
-            query = f"'{folder_id}' in parents"
-            fields = "files(id, name, mimeType, parents), nextPageToken"
-            
-            response = service.files().list(
-                q=query,
-                spaces='drive',
-                fields=fields,
-                pageToken=page_token,
-                supportsAllDrives=True,
-                includeItemsFromAllDrives=True
-            ).execute()
-            
-            items = response.get('files', [])
-            create_folder_structure(items, base_path)
-            
-            for item in items:
-                item_path = os.path.join(base_path, item['name'])
-                
-                if item['mimeType'] == 'application/vnd.google-apps.folder':
-                    # Recursively process subfolders
-                    subfolder_results = await process_folder(service, item['id'], item_path)
-                    results.extend(subfolder_results)
-                else:
-                    # Handle Google Workspace files
-                    if item['mimeType'].startswith('application/vnd.google-apps'):
-                        if item['mimeType'] == 'application/vnd.google-apps.document':
-                            item_path += '.pdf'
-                            success = await export_google_doc(service, item['id'], item_path)
-                        else:
-                            continue  # Skip other Google Workspace files
-                    else:
-                        # Download regular files
-                        success = await download_file(service, item['id'], item_path)
-                    
-                    results.append({
-                        'id': item['id'],
-                        'name': item['name'],
-                        'path': item_path,
-                        'status': 'success' if success else 'failed'
-                    })
-            
-            page_token = response.get('nextPageToken')
-            if not page_token:
-                break
-                
-        except Exception as e:
-            logger.error(f"Error processing folder: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Error processing folder: {str(e)}")
-    
-    return results
-
-async def export_google_doc(service, file_id: str, filepath: str) -> bool:
-    """Export Google Docs to PDF"""
-    try:
-        request = service.files().export_media(
-            fileId=file_id,
-            mimeType='application/pdf'
-        )
-        fh = io.BytesIO()
-        downloader = MediaIoBaseDownload(fh, request)
-        
-        done = False
-        while not done:
-            status, done = downloader.next_chunk()
-        
-        fh.seek(0)
-        with open(filepath, 'wb') as f:
-            f.write(fh.read())
-        return True
-    except Exception as e:
-        logger.error(f"Error exporting Google Doc {file_id}: {str(e)}")
-        return False
-
-# API Routes
-@router.post("/download-drive-folder", response_model=Dict)
-async def download_drive_folder(
-    request: FolderRequest,
-    background_tasks: BackgroundTasks
-):
-    """Start downloading a Google Drive folder"""
-    try:
-        service = get_drive_service(request.credentials)
-        
-        # Get folder details
-        folder = service.files().get(
-            fileId=request.folder_id,
-            fields='name',
-            supportsAllDrives=True
+        results = service.files().list(
+            q=f"'{folder_id}' in parents and trashed = false",
+            fields="nextPageToken, files(id, name, mimeType)",
+            pageToken=page_token
         ).execute()
         
-        folder_name = folder.get('name', 'downloaded_folder')
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        base_folder = os.path.join(UPLOAD_DIR, f"{folder_name}_{timestamp}")
-        os.makedirs(base_folder, exist_ok=True)
+        items.extend(results.get('files', []))
+        page_token = results.get('nextPageToken')
         
-        # Start download process in background
-        background_tasks.add_task(process_folder, service, request.folder_id, base_folder)
-        
-        return {
-            "status": "success",
-            "message": "Folder download started",
-            "folder_path": base_folder
-        }
-        
-    except Exception as e:
-        logger.error(f"Error initiating folder download: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        if not page_token:
+            break
 
-@router.get("/download-status/{folder_path}", response_model=DownloadStatus)
-async def get_download_status(folder_path: str):
-    """Check the status of a folder download"""
-    try:
-        if not os.path.exists(folder_path):
-            return DownloadStatus(
-                status="not_found",
-                message="Folder not found",
-                folder_path=folder_path
-            )
-        
-        total_size = 0
-        file_count = 0
-        
-        for root, dirs, files in os.walk(folder_path):
-            file_count += len(files)
-            for file in files:
-                file_path = os.path.join(root, file)
-                total_size += os.path.getsize(file_path)
-                
-        return DownloadStatus(
-            status="success",
-            file_count=file_count,
-            total_size_bytes=total_size,
-            folder_path=folder_path
-        )
-        
-    except Exception as e:
-        logger.error(f"Error checking download status: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    for item in items:
+        await download_file(service, item['id'], folder_path, item['name'])
 
-@router.delete("/cleanup/{folder_path}")
-async def cleanup_downloaded_folder(folder_path: str):
-    """Delete a downloaded folder"""
-    try:
-        if not os.path.exists(folder_path):
-            raise HTTPException(status_code=404, detail="Folder not found")
-            
-        if not folder_path.startswith(DATA_DIR):
-            raise HTTPException(status_code=400, detail="Invalid folder path")
-            
-        shutil.rmtree(folder_path)
+    return {"message": f"Downloaded {len(items)} files to {folder_path}"}
+
+async def handle_file_download(service, file_id: str):
+    file = service.files().get(fileId=file_id).execute()
+    file_path = os.path.join(UPLOAD_DIR, file['name'])
+    await download_file(service, file_id, UPLOAD_DIR, file['name'])
+    return {"message": f"Downloaded file to {file_path}"}
+
+async def download_file(service, file_id: str, path: str, name: str):
+    request = service.files().get_media(fileId=file_id)
+    file_path = os.path.join(path, name)
+    
+    with open(file_path, 'wb') as f:
+        downloader = MediaIoBaseDownload(f, request)
+        done = False
         
-        return {
-            "status": "success",
-            "message": "Folder deleted successfully"
-        }
-        
-    except Exception as e:
-        logger.error(f"Error cleaning up folder: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        while not done:
+            status, done = downloader.next_chunk()
+            if status:
+                logger.info(f"Download {name} progress: {int(status.progress() * 100)}%")
 
-# Add router to app
-app.include_router(router, prefix="/api/v1/drive")
-
-# Startup event
-@app.on_event("startup")
-async def startup_event():
-    logger.info("Starting up the application...")
-    # You can add any initialization code here
-
-# Shutdown event
-@app.on_event("shutdown")
-async def shutdown_event():
-    logger.info("Shutting down the application...")
-    # You can add any cleanup code here
+# Register routes
+app.include_router(router)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=8080,
+        reload=True,
+        ssl_keyfile=os.getenv("SSL_KEYFILE"),
+        ssl_certfile=os.getenv("SSL_CERTFILE")
+    )
