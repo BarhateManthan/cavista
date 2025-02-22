@@ -14,11 +14,8 @@ class GeminiQuery:
         self.model = genai.GenerativeModel('gemini-pro')
     
     def query(self, question, k=3):
-        # Retrieve relevant documents
         docs = self.vector_store.similarity_search(question, k=k)
         context = "\n\n".join([doc.page_content for doc in docs])
-        
-        # Generate response with Gemini
         prompt = f"Context:\n{context}\n\nQuestion: {question}\nAnswer:"
         
         try:

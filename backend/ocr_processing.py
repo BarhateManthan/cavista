@@ -5,7 +5,6 @@ import pytesseract
 import io
 
 def pdf_to_text(pdf_path, output_folder):
-    """Convert PDF to text using OCR if needed"""
     text = ""
     doc = fitz.open(pdf_path)
     

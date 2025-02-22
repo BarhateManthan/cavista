@@ -94,7 +94,6 @@ function Home() {
         </div>
       </section>
 
-      {/* About Section */}
       <section className="about">
         <div className="container">
           <h2 className="about-title">About SEWA मित्र</h2>
