@@ -116,6 +116,21 @@ async def save_notes(note: NoteCreate):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/check-session/{doctor_id}")
+async def check_session(doctor_id: str):
+    try:
+        # Check if any session exists for the doctor
+        session_keys = redis_client.keys("session:*")
+        for key in session_keys:
+            session_data = redis_client.get(key)
+            if session_data:
+                session = json.loads(session_data)
+                if session["doctor_id"] == doctor_id:
+                    return {"session_exists": True}
+        return {"session_exists": False}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
