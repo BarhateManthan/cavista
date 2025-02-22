@@ -10,7 +10,7 @@ import io
 from fastapi import HTTPException
 import logging
 
-DATA_DIR = 'data'
+DATA_DIR = "cavista/backend/data"
 
 log = logging.getLogger(__name__)
 
@@ -202,15 +202,3 @@ def download_folder_contents(service, folder_id, folder_path, drive_id=None):
             detail=f"Error downloading folder contents: {str(e)}"
         )
 
-
-def download_file_by_path(service, file_id, folder_path, file_name):
-    request = service.files().get_media(fileId=file_id)
-    file_path = os.path.join(folder_path, file_name)
-
-    with io.FileIO(file_path, 'wb') as file:
-        downloader = MediaIoBaseDownload(file, request)
-        done = False
-        while not done:
-            _, done = downloader.next_chunk()
-
-    return file_path

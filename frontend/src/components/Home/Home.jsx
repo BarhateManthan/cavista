@@ -1,14 +1,33 @@
-import { useState } from 'react';
-import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser } from "@clerk/clerk-react";
+import { useState, useEffect } from 'react';
+import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser, useAuth } from "@clerk/clerk-react";
 import { useNavigate } from 'react-router-dom';
 import './Home.css';
+import { handleDriveSelect } from "../../lib/apis/gdrive";
 
 function Home() {
   const [isOpen, setIsOpen] = useState(false);
-  const { user } = useUser();
+  const { isSignedIn, getToken } = useAuth();
   const navigate = useNavigate();
 
-  SignedIn && user && navigate('/dashboard');
+  useEffect(() => {
+    if (isSignedIn) {
+      navigate('/dashboard');
+    }
+  }, [isSignedIn, navigate]);
+
+  const handleDriveSelectClick = async () => {
+    console.log('=== Starting Google Drive Selection Flow ===');
+    try {
+      console.log('Getting Clerk token...');
+      const token = await getToken();
+      console.log('Token received:', token ? 'Present' : 'Missing');
+      
+      console.log('Calling handleDriveSelect...');
+      await handleDriveSelect(token);
+    } catch (error) {
+      console.error('Error in handleDriveSelectClick:', error);
+    }
+  };
 
   return (
     <div className="app">
@@ -103,6 +122,15 @@ function Home() {
           </div>
         </div>
       </section>
+
+      {isSignedIn && (
+        <button
+          onClick={handleDriveSelectClick}
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mt-4"
+        >
+          Import from Google Drive
+        </button>
+      )}
     </div>
   );
 }
