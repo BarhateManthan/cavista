@@ -2,50 +2,59 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import secrets
 import time
+import redis
 
 app = FastAPI()
 
-# Temporary storage for OTPs (use Redis/DB in production)
-otp_storage = {}
+# Connect to Redis (use actual Redis server in production)
+redis_client = redis.Redis(host="localhost", port=6379, db=0, decode_responses=True)
 
 class OTPRequest(BaseModel):
     user_id: str
 
 class OTPVerify(BaseModel):
     user_id: str
+    doctor_id: str
     otp: str
 
 @app.post("/generate-otp")
 def generate_otp(request: OTPRequest):
-    otp = secrets.token_hex(3)  # Secure 6-character hex OTP
-    otp_storage[request.user_id] = {
-        "otp": otp,
-        "timestamp": time.time()
-    }
+    otp = secrets.token_hex(3)  # Secure 6-char OTP
+    redis_client.setex(f"otp:{request.user_id}", 30, otp)  # Store OTP with 30-sec expiry
+    
     return {"message": "OTP generated", "otp": otp}  # Send via SMS/Email in production
 
 @app.post("/verify-otp")
 def verify_otp(request: OTPVerify):
-    user_data = otp_storage.get(request.user_id)
-    if not user_data:
-        raise HTTPException(status_code=400, detail="Invalid user ID")
+    stored_otp = redis_client.get(f"otp:{request.user_id}")
     
-    if time.time() - user_data["timestamp"] > 30:  # OTP expires in 5 minutes
-        raise HTTPException(status_code=400, detail="OTP expired")
+    if not stored_otp:
+        raise HTTPException(status_code=400, detail="OTP expired or invalid")
     
-    if user_data["otp"] != request.otp:
+    if stored_otp != request.otp:
         raise HTTPException(status_code=400, detail="Invalid OTP")
+
+    # Create session with 5-minute expiry
+    redis_client.setex(f"session:{request.user_id}", 300, request.doctor_id)
+
+    return {"message": "OTP verified. Doctor has access."}
+
+@app.get("/get-user-data/{user_id}")
+def get_user_data(user_id: str):
+    doctor_id = redis_client.get(f"session:{user_id}")
     
-    return {"message": "OTP verified. Doctor can access user data."}
+    if not doctor_id:
+        raise HTTPException(status_code=403, detail="Access denied. No valid session.")
+    
+    return {"message": f"Doctor {doctor_id} can access user {user_id}'s data."}
 
 @app.post("/end-session")
 def end_session(request: OTPRequest):
-    if request.user_id in otp_storage:
-        del otp_storage[request.user_id]
-        return {"message": "Session ended. OTP invalidated."}
+    if redis_client.delete(f"session:{request.user_id}"):
+        return {"message": "Session ended. Doctor access revoked."}
+    
     raise HTTPException(status_code=400, detail="Invalid user ID or session already ended")
 
-# Run the FastAPI server
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
