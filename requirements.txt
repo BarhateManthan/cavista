@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+pdf2image
+pytesseract
+transformers
+sentence-transformers
+faiss-cpu
+numpy
+torch
+Pillow
+python-multipart
+werkzeug
