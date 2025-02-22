@@ -1,47 +1,46 @@
-6 KESKAR) _ [IIIa
-
-DIAGNOSTIC SERVICES
-
-Name : Mr. DEVIDAS YASHWANT MHATRE
-Age/Sex : 49 Year / Male
-Ref. By : Dr--- Sample Collected At:
-
-SID
-Registered
+*1025020499*
+Sample Collected At:
+Dr.- - -
+:
+Ref. By
+49 Year / Male
+Mr. DEVIDAS YASHWANT MHATRE
+:
+Age/Sex
+:
+Name
+:
 Collected
-Received
+11/Feb/25  10:19AM
 Reported
-
+:
+:
+11/Feb/25  10:15AM
+Registered
+Received
+:
+11/Feb/25  10:19AM
 KDS Pen
-
+11/Feb/25  11:26AM
+SID
+:
 1025020499
-
-11/Feb/25 10:15AM
-11/Feb/25 10:19AM
-11/Feb/25 10:19AM
-11/Feb/25 11:26AM
-
 BIOCHEMISTRY
-
-Investigation Result Units
-
-S. Creatinine 1.0 mg/dL
-
-** End of Report ***
-
-Print Date 11/02/2025 11:27AM
-
 Bio. Ref. Interval
-
-0.6 -1.5
-
-8, D Wing, Shree Samarth Prasad Nagar, Raju Pote Marg, Near Moreshwar Cinema, Pen, Dist. Raigad - 402 107.
-
-& : 02143-255799 | 913045 4460 | 87673 99935 a: jpkeskar@gmail.com | keskarpathlab@gmail.com
-Page 1
-
-Sgt
-
+Units
+Result
+Investigation
+0.6 - 1.5
+mg/dL
+S. Creatinine
+1.0
+*** End of Report ***
+:
+11/02/2025
+11:27AM
 Dr. J.P.Keskar
 MMC Reg No 70966
 MBBS MD (Path)
+Print Date    
+Page 1
+

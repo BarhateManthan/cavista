@@ -1,50 +1,43 @@
 import os
-import google.generativeai as genai
-from chromadb import Client, Settings
-from backend.ocr import process_pdfs
-from backend.vector_db import create_vector_store
+import click
+from dotenv import load_dotenv
+from backend.ocr_processing import process_uploads
+from backend.vector_store import create_vector_store
+from backend.query_gemini import GeminiQuery
 
-# Configure Gemini API
-def configure_gemini(api_key):
-    genai.configure(api_key=api_key)
+@click.group()
+def cli():
+    """CLI for Document Processing and Querying"""
+    load_dotenv()
 
-# Query the vector store and get a response from Gemini
-def query_vector_store(query, rag_folder, api_key):
-    # Configure Gemini
-    configure_gemini(api_key)
-    
-    # Load ChromaDB collection
-    client = Client(Settings(persist_directory=os.path.join(rag_folder, 'chroma_db')))
-    collection = client.get_collection(name="pdf_texts")
-    
-    # Query the vector store
-    results = collection.query(query_texts=[query], n_results=5)
-    
-    # Combine the top results into a single context string
-    context = "\n".join(results['documents'][0])
-    
-    # Use Gemini to generate a response
-    model = genai.GenerativeModel('gemini-pro')
-    response = model.generate_content(f"Context: {context}\n\nQuestion: {query}")
-    
-    return response.text
+@cli.command()
+@click.option("--uploads", default="uploads", help="Uploads folder path")
+@click.option("--text", default="text", help="Text output folder path")
+def process(uploads, text):
+    """Process PDFs from uploads folder"""
+    processed = process_uploads(uploads, text)
+    click.echo(f"Processed {len(processed)} files")
 
-def main():
-    uploads_folder = os.path.join(os.getcwd(), 'uploads')
-    text_folder = os.path.join(os.getcwd(), 'text')
-    rag_folder = os.path.join(os.getcwd(), 'rag')
-    api_key = "AIzaSyAihO7eGZVGEOSimZOiBKKTdB0WUuA2lKk"  # Replace with your Gemini API key
+@cli.command()
+@click.option("--text", default="text", help="Text folder path")
+@click.option("--rag", default="rag", help="RAG storage folder path")
+def vectorize(text, rag):
+    """Create vector store from text files"""
+    create_vector_store(text, rag)
+    click.echo("Vector store created successfully")
+
+@cli.command()
+@click.argument("question")
+@click.option("--rag", default="rag", help="RAG storage folder path")
+def ask(question, rag):
+    """Query the document store"""
+    if not os.path.exists(rag):
+        raise click.ClickException("Vector store not found. Run vectorize first.")
     
-    # Step 1: Process PDFs and save text files
-    process_pdfs(uploads_folder, text_folder)
-    
-    # Step 2: Create vector store
-    create_vector_store(text_folder, rag_folder)
-    
-    # Step 3: Query the vector store
-    query = "tell me the summary."
-    response = query_vector_store(query, rag_folder, api_key)
-    print(response)
+    qa = GeminiQuery(rag)
+    response = qa.query(question)
+    click.echo("\nResponse:")
+    click.echo(response)
 
 if __name__ == "__main__":
-    main()
+    cli()
