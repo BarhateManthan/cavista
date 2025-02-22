@@ -8,7 +8,6 @@ function Home() {
   const { user } = useUser();
   const navigate = useNavigate();
 
-  // Redirect to dashboard if user is logged in
   SignedIn && user && navigate('/dashboard');
 
   return (
@@ -21,7 +20,6 @@ function Home() {
               <span className="logo-normal">मित्र</span>
             </a>
 
-            {/* Desktop Navigation */}
             <div className="desktop-nav">
               <div className="nav-links">
                 <a href="/about" className="nav-link">About Us</a>
@@ -44,7 +42,6 @@ function Home() {
               </SignedIn>
             </div>
 
-            {/* Mobile menu button */}
             <button 
               onClick={() => setIsOpen(!isOpen)}
               className="mobile-menu-button"
@@ -59,7 +56,6 @@ function Home() {
             </button>
           </div>
 
-          {/* Mobile Navigation */}
           {isOpen && (
             <div className="mobile-nav">
               <a href="/about" className="mobile-link">About Us</a>
@@ -83,7 +79,6 @@ function Home() {
         </div>
       </nav>
       
-      {/* Hero Section */}
       <section className="hero">
         <div className="container">
           <div className="hero-content">
