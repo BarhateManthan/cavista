@@ -20,7 +20,7 @@ def generate_otp(request: OTPRequest):
     otp = secrets.token_hex(3)  # Secure 6-char OTP
     redis_client.setex(f"otp:{otp}", 30, request.user_id)  # Store OTP mapped to user_id with 30-sec expiry
     
-    return {"message": "OTP generated", "otp": otp}  # Send via SMS/Email in production
+    return {"message": "OTP generated", "otp": otp}  
 
 @app.post("/verify-otp")
 def verify_otp(request: OTPVerify):
@@ -45,9 +45,16 @@ def get_user_data(user_id: str):
 
 @app.post("/end-session")
 def end_session(request: OTPRequest):
+    # Find the OTP for the user
+    otp_keys = redis_client.keys("otp:*")  # Get all stored OTPs
+    for otp_key in otp_keys:
+        if redis_client.get(otp_key) == request.user_id:
+            redis_client.delete(otp_key)  # Delete the OTP
+
+    # Delete the session
     if redis_client.delete(f"session:{request.user_id}"):
         return {"message": "Session ended. Doctor access revoked."}
-    
+
     raise HTTPException(status_code=400, detail="Invalid user ID or session already ended")
 
 if __name__ == "__main__":
