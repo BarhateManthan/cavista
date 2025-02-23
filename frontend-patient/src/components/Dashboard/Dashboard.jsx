@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './Dashboard.css';
 import { UserButton, useUser } from "@clerk/clerk-react";
 import { X, RefreshCw, Share2, Power } from 'lucide-react';
+import DriveButton from "./DriveButton";
+import { useNavigate } from 'react-router-dom';
 
 const Dashboard = () => {
   const { user, isLoaded } = useUser();
@@ -9,14 +11,21 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [otpData, setOtpData] = useState(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   if (!isLoaded) {
-    return <div>Loading...</div>; // Chill until the user info loads
+    return <div>Loading...</div>;
   }
 
   const handleGetOTP = async () => {
     if (!user?.id) {
-      setError('User not logged in'); // Bruh, login first
+      setError('User not logged in');
       return;
     }
 
@@ -24,7 +33,6 @@ const Dashboard = () => {
     setError(null);
 
     try {
-      // Asking the backend homie for an OTP
       const response = await fetch('http://127.0.0.1:8000/api/generate-otp', {
         method: 'POST',
         headers: {
@@ -36,27 +44,26 @@ const Dashboard = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate OTP'); // Something's sus
+        throw new Error('Failed to generate OTP');
       }
 
       const data = await response.json();
-      setOtpData(data); // Got the OTP, let's roll
+      setOtpData(data);
       setShowModal(true);
     } catch (err) {
       setError(err.message);
       console.error('Error generating OTP:', err);
     } finally {
-      setIsLoading(false); // Chill, request is done
+      setIsLoading(false);
     }
   };
 
   const handleRefresh = () => {
-    handleGetOTP(); // Get a fresh OTP, cause why not
+    handleGetOTP();
   };
 
   const handleEndSession = async () => {
     try {
-      // Telling the backend, "Yo, end this session"
       const response = await fetch('http://127.0.0.1:8000/api/end-session', {
         method: 'POST',
         headers: {
@@ -68,18 +75,17 @@ const Dashboard = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to end session'); // Backend ghosted us
+        throw new Error('Failed to end session');
       }
 
-      setShowModal(false); // Close the popup
-      setOtpData(null); // Yeet the OTP
+      setShowModal(false);
+      setOtpData(null);
     } catch (err) {
       setError(err.message);
     }
   };
 
   const handleShare = () => {
-    // Time to flex that OTP on WhatsApp
     const message = `Here's your OTP: ${otpData?.otp}`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
@@ -101,16 +107,39 @@ const Dashboard = () => {
             onClick={handleGetOTP}
             disabled={isLoading}
           >
-            {isLoading ? 'Generating...' : 'Get OTP'} {/* The button gotta tell you what's up */}
+            {isLoading ? 'Generating...' : 'Get OTP'}
           </button>
-          <button className="connect-button">CONNECT TO DRIVE</button> {/* Placeholder button for future magic */}
-          {error && <div className="error-message">{error}</div>} {/* If it breaks, let 'em know */}
+
+          <DriveButton 
+            onFolderSelect={(folderId, credentials) => {
+              try {
+                fetch('/download-drive-folder', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    folder_id: folderId,
+                    credentials: {
+                      client_id: process.env.GOOGLE_CLIENT_ID,
+                      access_token: credentials.access_token,
+                      token_uri: "https://oauth2.googleapis.com/token",
+                      auth_uri: "https://accounts.google.com/o/oauth2/auth",
+                      redirect_uris: [window.location.origin + "/dashboard"]
+                    }
+                  })
+                });
+              } catch (error) {
+                console.error('Error downloading folder:', error);
+              }
+            }}
+          />
+
+          {error && <div className="error-message">{error}</div>}
         </div>
         
         <div className="user-info">
-          <UserButton /> {/* Fancy Clerk auth button */}
+          <UserButton />
           <span className="user-name">
-            {user ? user.fullName?.toUpperCase() : 'GUEST'} {/* Either a username or we treat you like an NPC */}
+            {user?.fullName?.toUpperCase() || 'GUEST'}
           </span>
         </div>
       </div>
@@ -125,22 +154,22 @@ const Dashboard = () => {
               
               <div className="modal-content">
                 <h2>Your OTP</h2>
-                <div className="otp-display">{otpData?.otp}</div> {/* OTP flex zone */}
+                <div className="otp-display">{otpData?.otp}</div>
                 
                 <div className="modal-actions">
                   <button className="action-button refresh" onClick={handleRefresh}>
                     <RefreshCw size={20} />
-                    Refresh {/* Get a new OTP, cause why not */}
+                    Refresh
                   </button>
                   
                   <button className="action-button end-session" onClick={handleEndSession}>
                     <Power size={20} />
-                    End Session {/* Shut it down, we're done here */}
+                    End Session
                   </button>
                   
                   <button className="action-button share" onClick={handleShare}>
                     <Share2 size={20} />
-                    Share {/* Time to slide that OTP into DMs */}
+                    Share
                   </button>
                 </div>
               </div>
