@@ -2,29 +2,30 @@ import React, { useState, useEffect } from 'react';
 import './Dashboard.css';
 import { UserButton, useUser } from "@clerk/clerk-react";
 import { X, Send } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import { useNavigate } from 'react-router-dom'; // For switching pages
 import useSessionPolling from '../useSessionPolling';
 
 const Dashboard = () => {
-  const { user, isLoaded } = useUser();
+  const { user, isLoaded } = useUser(); // Get user info
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [otpInput, setOtpInput] = useState('');
   const [isVerified, setIsVerified] = useState(false);
   const [patientData, setPatientData] = useState(null);
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate(); // Page navigation
 
-  // Use the custom hook for session polling
+  // Keep checking session status (like a stalker)
   useSessionPolling(user?.id, isVerified);
 
   if (!isLoaded) {
-    return <div>Loading...</div>;
+    return <div>Loading...</div>; // If user info ain't here yet
   }
 
+  // Sends OTP for verification, because we don’t trust you
   const handleSendOTP = async () => {
     if (!otpInput) {
-      setError('Please enter the OTP');
+      setError('Bruh, enter the OTP first');
       return;
     }
 
@@ -39,21 +40,21 @@ const Dashboard = () => {
         },
         body: JSON.stringify({
           otp: otpInput,
-          doctor_id: user.id // Send the doctor's ID for session tracking
+          doctor_id: user.id // Identify the doc
         })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to verify OTP');
+        throw new Error('OTP verification failed, you noob');
       }
 
       const data = await response.json();
       if (data.verified) {
         setIsVerified(true);
         setPatientData(data.patient_data);
-        alert('OTP Verified! Connection established with the patient.');
+        alert('OTP Verified! You and the patient are BFFs now');
       } else {
-        setError('Invalid OTP');
+        setError('Nah, wrong OTP');
       }
     } catch (err) {
       setError(err.message);
@@ -64,6 +65,7 @@ const Dashboard = () => {
 
   return (
     <div className="file-upload-container">
+      {/* Sidebar for navigation and buttons */}
       <div className="sidebar">
         <div className="logo">
           <span className="sewa">SEWA</span>
@@ -73,6 +75,7 @@ const Dashboard = () => {
         </div>
         
         <div className="button-container">
+          {/* Open modal to connect with a patient */}
           <button 
             className={`add-button ${isLoading ? 'loading' : ''}`} 
             onClick={() => setShowModal(true)}
@@ -80,9 +83,10 @@ const Dashboard = () => {
           >
             Connect to Patient
           </button>
+          {/* Navigate to chat section */}
           <button 
             className={`connect-button ${isLoading ? 'loading' : ''}`} 
-            onClick={() => navigate('/chat')} // Navigate to /chat
+            onClick={() => navigate('/chat')} // Go to /chat
             disabled={isLoading}
           >
             Chat
@@ -90,6 +94,7 @@ const Dashboard = () => {
           {error && <div className="error-message">{error}</div>}
         </div>
         
+        {/* Show user info and logout button */}
         <div className="user-info">
           <UserButton />
           <span className="user-name">
@@ -98,6 +103,7 @@ const Dashboard = () => {
         </div>
       </div>
       
+      {/* Main content area */}
       <div className="main-content">
         {showModal && (
           <div className="modal-overlay">
@@ -110,7 +116,7 @@ const Dashboard = () => {
                 <h2>Connect to Patient</h2>
                 {!isVerified ? (
                   <>
-                    <p className="otp-message">Enter the OTP shared by the patient.</p>
+                    <p className="otp-message">Enter the OTP from the patient. No peeking!</p>
                     
                     <div className="verify-section">
                       <input 
@@ -132,8 +138,8 @@ const Dashboard = () => {
                   </>
                 ) : (
                   <div className="success-message">
-                    <h3>OTP Verified Successfully!</h3>
-                    <p>You are now connected to the patient.</p>
+                    <h3>OTP Verified! You made it.</h3>
+                    <p>You're now connected to the patient.</p>
                     {patientData && (
                       <div className="patient-data">
                         <h4>Patient Data:</h4>
