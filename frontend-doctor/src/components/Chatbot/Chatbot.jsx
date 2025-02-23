@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserButton, useUser } from "@clerk/clerk-react";
 import useSessionPolling from '../useSessionPolling';
 import './Chatbot.css';
@@ -7,25 +7,38 @@ const Chatbot = () => {
   const { user } = useUser();
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
-  const [isVerified, setIsVerified] = useState(true); // Assume session is verified
-  const [isLoading, setIsLoading] = useState(false); // New state for loading
+  const [isVerified, setIsVerified] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [files, setFiles] = useState([]);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [showPdfViewer, setShowPdfViewer] = useState(false);
 
-  // Use the custom hook for session polling
   useSessionPolling(user?.id, isVerified);
+
+  useEffect(() => {
+    const fetchFiles = async () => {
+      try {
+        const response = await fetch('https://hkxwqg2z-5000.inc1.devtunnels.ms/kb_files');
+        if (!response.ok) {
+          throw new Error('Failed to fetch files');
+        }
+        const data = await response.json();
+        setFiles(data.filenames);
+      } catch (error) {
+        console.error('Error fetching files:', error);
+      }
+    };
+
+    fetchFiles();
+  }, []);
 
   const handleSendMessage = async () => {
     if (inputText.trim()) {
-      // Add user message
       setMessages([...messages, { text: inputText, sender: 'user' }]);
-
-      // Clear input
       setInputText('');
-
-      // Set loading state
       setIsLoading(true);
 
       try {
-        // Send the user's input to the chatbot API
         const response = await fetch('https://hkxwqg2z-5000.inc1.devtunnels.ms/chat', {
           method: 'POST',
           headers: {
@@ -40,49 +53,54 @@ const Chatbot = () => {
 
         const data = await response.json();
 
-        // Add bot's response to the messages
         setMessages((prevMessages) => [
           ...prevMessages,
           { text: data.response, sender: 'bot' },
         ]);
       } catch (error) {
         console.error('Error:', error);
-        // Handle error (e.g., show an error message to the user)
         setMessages((prevMessages) => [
           ...prevMessages,
           { text: 'Sorry, something went wrong. Please try again.', sender: 'bot' },
         ]);
       } finally {
-        // Reset loading state
         setIsLoading(false);
       }
     }
   };
 
+  const handleFileClick = (filename) => {
+    if (filename.toLowerCase().endsWith('.pdf')) {
+      setSelectedFile(`https://hkxwqg2z-5000.inc1.devtunnels.ms/kb_files/${filename}`);
+      setShowPdfViewer(true);
+    } else {
+      window.open(`https://hkxwqg2z-5000.inc1.devtunnels.ms/kb_files/${filename}`, '_blank');
+    }
+  };
+
   return (
     <div className="chatbot-container">
-      {/* Sidebar */}
       <div className="chatbot-sidebar">
         <div className="logo">SEWA मित्र</div>
         <ul className="nav">
-          {/* We can have here the list of files */}
+          {files.map((file, index) => (
+            <li key={index} onClick={() => handleFileClick(file)} className="file-item">
+              {file}
+            </li>
+          ))}
         </ul>
 
-        {/* User Info at Bottom */}
         <div className="user-info">
           <UserButton />
           <span className="user-name">{user?.fullName?.toUpperCase() || 'GUEST'}</span>
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="chatbot-main-content">
-        {/* Header */}
         <div className="chatbot-header">
           <h1>Chatbot</h1>
         </div>
 
-        {/* Chat Messages */}
         <div className="chatbot-messages">
           {messages.map((message, index) => (
             <div
@@ -93,7 +111,6 @@ const Chatbot = () => {
             </div>
           ))}
 
-          {/* Show loader while waiting for response */}
           {isLoading && (
             <div className="chatbot-message bot">
               <div className="message-content">
@@ -103,7 +120,6 @@ const Chatbot = () => {
           )}
         </div>
 
-        {/* Input Area */}
         <div className="chatbot-input-area">
           <input
             type="text"
@@ -117,6 +133,23 @@ const Chatbot = () => {
           </button>
         </div>
       </div>
+
+      {showPdfViewer && (
+        <div className="pdf-modal">
+          <div className="pdf-modal-content">
+            <button className="close-button" onClick={() => setShowPdfViewer(false)}>
+              ×
+            </button>
+            <iframe
+              src={selectedFile}
+              title="PDF Viewer"
+              width="100%"
+              height="100%"
+              style={{ border: 'none' }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
