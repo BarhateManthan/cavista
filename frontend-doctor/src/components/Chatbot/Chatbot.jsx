@@ -5,37 +5,84 @@ import './Chatbot.css';
 
 const Chatbot = () => {
   const { user } = useUser();
-  const [messages, setMessages] = useState([]); // Stores chat messages
-  const [inputText, setInputText] = useState(''); // Stores input text from the user
-  const [isVerified, setIsVerified] = useState(true); // Simulating verification status (we don't like unverified peeps)
-  const [isLoading, setIsLoading] = useState(false); // Shows loading state for messages
-  const [files, setFiles] = useState([]); // Stores available files
-  const [selectedFile, setSelectedFile] = useState(null); // Stores the currently selected file
-  const [showPdfViewer, setShowPdfViewer] = useState(false); // Controls the PDF modal visibility
+  const [messages, setMessages] = useState([]);
+  const [inputText, setInputText] = useState('');
+  const [isVerified, setIsVerified] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [files, setFiles] = useState([]);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [showPdfViewer, setShowPdfViewer] = useState(false);
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [noteText, setNoteText] = useState(() => {
+    const cached = localStorage.getItem('draftNote');
+    return cached || '';
+  });
 
-  // Keep session alive (because ghosts shouldn’t be chatting)
   useSessionPolling(user?.id, isVerified);
 
   useEffect(() => {
-    // Fetch available files when the component loads
     const fetchFiles = async () => {
       try {
         const response = await fetch('https://hkxwqg2z-5000.inc1.devtunnels.ms/kb_files');
         if (!response.ok) throw new Error('Failed to fetch files');
         const data = await response.json();
-        setFiles(data.filenames); // Store those file names
+        setFiles(data.filenames);
       } catch (error) {
-        console.error('Bruh, error fetching files:', error);
+        console.error('Error fetching files:', error);
       }
     };
 
     fetchFiles();
   }, []);
 
-  const handleSendMessage = async () => {
-    if (!inputText.trim()) return; // Don't send empty messages, duh.
+  const handleNoteChange = (e) => {
+    const newText = e.target.value;
+    setNoteText(newText);
+    localStorage.setItem('draftNote', newText);
+  };
 
-    setMessages([...messages, { text: inputText, sender: 'user' }]); // Add user message
+  const handleSubmitNote = async () => {
+    if (!noteText.trim()) return;
+
+    try {
+      const fileName = `note_${new Date().toISOString().slice(0,10)}.txt`;
+      const fileContent = noteText;
+    
+      // Save to localStorage first
+      localStorage.setItem(fileName, fileContent);
+    
+      // Create a Blob from the file content
+      const blob = new Blob([fileContent], { type: 'text/plain' });
+      
+      // Create FormData and append the file
+      const formData = new FormData();
+      formData.append('file', blob, fileName);
+    
+      // Send the request with FormData
+      const response = await fetch('https://hkxwqg2z-5000.inc1.devtunnels.ms/kb_add_file', {
+        method: 'POST',
+        body: formData  // Remove Content-Type header - it will be set automatically
+      });
+    
+      if (!response.ok) throw new Error('Failed to save note');
+    
+      localStorage.removeItem('draftNote');
+      setNoteText('');
+      setShowNoteModal(false);
+    
+      const filesResponse = await fetch('https://hkxwqg2z-5000.inc1.devtunnels.ms/kb_files');
+      const data = await filesResponse.json();
+      setFiles(data.filenames);
+    } catch (error) {
+      console.error('Error saving note:', error);
+      alert('Failed to save note. Please try again.');
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!inputText.trim()) return;
+
+    setMessages([...messages, { text: inputText, sender: 'user' }]);
     setInputText('');
     setIsLoading(true);
 
@@ -46,20 +93,22 @@ const Chatbot = () => {
         body: JSON.stringify({ prompt: inputText }),
       });
 
-      if (!response.ok) throw new Error('Chatbot is having a meltdown');
+      if (!response.ok) throw new Error('Failed to fetch bot response');
 
       const data = await response.json();
-      setMessages((prevMessages) => [...prevMessages, { text: data.response, sender: 'bot' }]); // Add bot response
+      setMessages((prevMessages) => [...prevMessages, { text: data.response, sender: 'bot' }]);
     } catch (error) {
       console.error('Error:', error);
-      setMessages((prevMessages) => [...prevMessages, { text: 'Oops, chatbot died. Try again.', sender: 'bot' }]);
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { text: 'Sorry, something went wrong. Please try again.', sender: 'bot' },
+      ]);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleFileClick = (filename) => {
-    // If it's a PDF, show it in the viewer, else open in a new tab
     if (filename.toLowerCase().endsWith('.pdf')) {
       setSelectedFile(`https://hkxwqg2z-5000.inc1.devtunnels.ms/kb_files/${filename}`);
       setShowPdfViewer(true);
@@ -70,15 +119,18 @@ const Chatbot = () => {
 
   return (
     <div className="chatbot-container">
-      {/* Sidebar for navigation */}
       <div className="chatbot-sidebar">
         <div className="logo">SEWA मित्र</div>
         <ul className="nav">
           {files.map((file, index) => (
             <li key={index} onClick={() => handleFileClick(file)} className="file-item">
-              {file} {/* Show file names */}
+              {file}
             </li>
           ))}
+          <li className="add-note-button" onClick={() => setShowNoteModal(true)}>
+            <span className="plus-icon">+</span>
+            Add Note
+          </li>
         </ul>
 
         <div className="user-info">
@@ -87,7 +139,6 @@ const Chatbot = () => {
         </div>
       </div>
 
-      {/* Main chat area */}
       <div className="chatbot-main-content">
         <div className="chatbot-header">
           <h1>Chatbot</h1>
@@ -103,13 +154,12 @@ const Chatbot = () => {
           {isLoading && (
             <div className="chatbot-message bot">
               <div className="message-content">
-                <div className="loader"></div> {/* Typing indicator */}
+                <div className="loader"></div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Input field for user messages */}
         <div className="chatbot-input-area">
           <input
             type="text"
@@ -124,12 +174,34 @@ const Chatbot = () => {
         </div>
       </div>
 
-      {/* PDF Viewer Modal */}
       {showPdfViewer && (
         <div className="pdf-modal">
           <div className="pdf-modal-content">
             <button className="close-button" onClick={() => setShowPdfViewer(false)}>×</button>
-            <iframe src={selectedFile} title="PDF Viewer" width="100%" height="100%" style={{ border: 'none' }} />
+            <iframe
+              src={selectedFile}
+              title="PDF Viewer"
+              width="100%"
+              height="100%"
+              style={{ border: 'none' }}
+            />
+          </div>
+        </div>
+      )}
+
+      {showNoteModal && (
+        <div className="note-modal">
+          <div className="note-modal-content">
+            <h2>Add Note</h2>
+            <textarea
+              value={noteText}
+              onChange={handleNoteChange}
+              placeholder="Type your note here..."
+            />
+            <div className="note-modal-buttons">
+              <button onClick={() => setShowNoteModal(false)}>Cancel</button>
+              <button onClick={handleSubmitNote}>Save Note</button>
+            </div>
           </div>
         </div>
       )}
