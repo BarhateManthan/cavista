@@ -1,14 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser } from "@clerk/clerk-react";
 import { useNavigate } from 'react-router-dom';
 import './Home.css';
 
 function Home() {
   const [isOpen, setIsOpen] = useState(false);
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const navigate = useNavigate();
 
-  SignedIn && user && navigate('/dashboard');
+  // ✅ Redirect to dashboard if user is signed in
+  useEffect(() => {
+    if (isLoaded && user) {
+      navigate('/dashboard');
+    }
+  }, [isLoaded, user, navigate]);
 
   return (
     <div className="app">
@@ -65,9 +70,9 @@ function Home() {
                 <SignInButton mode="modal">
                   <button className="mobile-button">Login</button>
                 </SignInButton>
-                <SignInButton mode="modal">
+                <SignUpButton mode="modal">
                   <button className="mobile-button">Sign Up</button>
-                </SignInButton>
+                </SignUpButton>
               </SignedOut>
               <SignedIn>
                 <div className="mobile-user-button">
