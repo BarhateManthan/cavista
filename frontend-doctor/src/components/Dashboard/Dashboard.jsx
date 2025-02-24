@@ -33,7 +33,7 @@ const Dashboard = () => {
     setError(null);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/verify-otp', {
+      const response = await fetch('http://127.0.0.1:9000/api/verify-otp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -51,7 +51,7 @@ const Dashboard = () => {
       const data = await response.json();
       if (data.verified) {
         setIsVerified(true);
-        setPatientData(data.patient_data);
+        // setPatientData(data.patient_data);
         alert('OTP Verified! You and the patient are BFFs now');
       } else {
         setError('Nah, wrong OTP');

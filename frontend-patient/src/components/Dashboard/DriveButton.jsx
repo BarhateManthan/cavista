@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
+import './Dashboard.css'
 
 const DriveButton = () => {
     const handleFolderSelect = async (folderId, token) => {
@@ -10,7 +11,7 @@ const DriveButton = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': Bearer `${token}`
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
                     folder_id: folderId
@@ -81,7 +82,7 @@ const DriveButton = () => {
     }, []);
 
     return (
-        <button onClick={() => login()}>
+        <button onClick={() => login()} className='connect-button'>
             Select Google Drive Folder
         </button>
     );

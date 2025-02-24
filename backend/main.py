@@ -13,10 +13,8 @@ from googleapiclient.errors import HttpError
 import traceback
 import io
 
-# Initialize FastAPI app
 app = FastAPI()
 
-# Configure CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,15 +23,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Define base paths
 CACHE_DIR = Path("cache")
 DATA_DIR = Path("data")
 UPLOADS_DIR = DATA_DIR / "uploads"
 
-# Create necessary directories
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
-# Google Workspace MIME type mappings
 GOOGLE_MIME_TYPES = {
     'application/vnd.google-apps.document': ('application/pdf', '.pdf'),
     'application/vnd.google-apps.spreadsheet': ('application/pdf', '.pdf'),
@@ -72,7 +67,6 @@ def download_google_file(service, file_id: str, folder_path: str, file_name: str
             export_mime_type, extension = GOOGLE_MIME_TYPES[mime_type]
             request = service.files().export_media(fileId=file_id, mimeType=export_mime_type)
             
-            # Add extension if not present
             if not file_name.endswith(extension):
                 file_name += extension
                 
@@ -97,11 +91,9 @@ def download_google_file(service, file_id: str, folder_path: str, file_name: str
 
 def download_file(service, file_id: str, folder_path: str, file_name: str, mime_type: str) -> str:
     try:
-        # Get detailed file information
         file = service.files().get(fileId=file_id, fields='mimeType').execute()
         file_mime_type = file.get('mimeType', '')
         
-        # Handle based on file type
         if file_mime_type.startswith('application/vnd.google-apps.'):
             return download_google_file(service, file_id, folder_path, file_name, file_mime_type)
         else:
@@ -193,6 +185,6 @@ async def download_folder(
 async def health_check():
     return {"status": "ok"}
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

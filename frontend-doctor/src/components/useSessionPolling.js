@@ -9,7 +9,7 @@ const useSessionPolling = (userId, isVerified) => {
       // Bruh, let's keep checking if the session is still alive
       const interval = setInterval(async () => {
         try {
-          const response = await fetch(`http://127.0.0.1:8000/api/check-session/${userId}`);
+          const response = await fetch(`http://127.0.0.1:9000/api/check-session/${userId}`);
           const data = await response.json();
 
           if (!data.session_exists) {
